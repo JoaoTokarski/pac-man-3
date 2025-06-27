@@ -6,12 +6,16 @@ const tileCount = 20;
 canvas.width = tileSize * tileCount;
 canvas.height = tileSize * tileCount;
 
-// Variáveis do jogo
+// Estado do jogo
 let score = 0;
 let highScore = localStorage.getItem('pacmanHighScore') || 0;
 let gameRunning = false;
 let gameOver = false;
 let animationId;
+let lastTime = 0;
+const targetFPS = 60;
+const frameInterval = 1000 / targetFPS;
+let deltaTime = 0;
 
 // Pac-Man
 const pacman = {
@@ -19,7 +23,7 @@ const pacman = {
     y: 15,
     dx: 0,
     dy: 0,
-    speed: 5,
+    speed: 7,  // Velocidade aumentada
     radius: tileSize / 2 - 2,
     mouthAngle: 0,
     mouthOpen: true
@@ -27,38 +31,66 @@ const pacman = {
 
 // Fantasmas
 const ghosts = [
-    { x: 9, y: 9, dx: 1, dy: 0, color: '#FF0000', speed: 2 },
-    { x: 10, y: 9, dx: -1, dy: 0, color: '#00FFFF', speed: 1.5 }
+    { x: 9, y: 9, dx: 1, dy: 0, color: '#FF0000', speed: 3.5 },
+    { x: 10, y: 9, dx: -1, dy: 0, color: '#00FFFF', speed: 3 },
+    { x: 9, y: 10, dx: 0, dy: 1, color: '#FF69B4', speed: 2.8 },
+    { x: 10, y: 10, dx: 0, dy: -1, color: '#FFA500', speed: 3.2 }
 ];
 
-// Pontos e paredes
+// Elementos do jogo
 let dots = [];
 const walls = [];
+const powerPellets = [
+    { x: 1, y: 1 },
+    { x: 18, y: 1 },
+    { x: 1, y: 18 },
+    { x: 18, y: 18 }
+];
+
+// Labirinto personalizado
+const mazePattern = [
+    "####################",
+    "#..................#",
+    "#.###..###..###..###",
+    "#.#......#......#..#",
+    "#.#..##..##..##..#.#",
+    "#.#..#......#..#..#",
+    "#....##....##....#",
+    "#.###..####..###.#",
+    "#......#..#......#",
+    "###.##......##.###",
+    "#......#..#......#",
+    "#.###..####..###.#",
+    "#....##....##....#",
+    "#.#..#......#..#..#",
+    "#.#..##..##..##..#.#",
+    "#.#......#......#..#",
+    "#.###..###..###..###",
+    "#..................#",
+    "####################"
+];
 
 // Inicializa o jogo
 function initGame() {
-    // Limpa paredes e pontos
+    // Limpa arrays
     walls.length = 0;
     dots.length = 0;
 
-    // Cria paredes (bordas)
-    for (let i = 0; i < tileCount; i++) {
-        walls.push({ x: i, y: 0 });
-        walls.push({ x: i, y: tileCount - 1 });
-        if (i > 0 && i < tileCount - 1) {
-            walls.push({ x: 0, y: i });
-            walls.push({ x: tileCount - 1, y: i });
-        }
-    }
-
-    // Cria pontos
-    for (let y = 1; y < tileCount - 1; y++) {
-        for (let x = 1; x < tileCount - 1; x++) {
-            if (!walls.some(wall => wall.x === x && wall.y === y)) {
+    // Cria labirinto
+    for (let y = 0; y < tileCount; y++) {
+        for (let x = 0; x < tileCount; x++) {
+            if (mazePattern[y] && mazePattern[y][x] === '#') {
+                walls.push({ x, y });
+            } else if (x > 0 && x < tileCount - 1 && y > 0 && y < tileCount - 1) {
                 dots.push({ x, y });
             }
         }
     }
+
+    // Remove pontos onde tem power pellets
+    dots = dots.filter(dot => 
+        !powerPellets.some(pellet => pellet.x === dot.x && pellet.y === dot.y)
+    );
 
     // Reseta posições
     pacman.x = 10;
@@ -66,17 +98,18 @@ function initGame() {
     pacman.dx = 0;
     pacman.dy = 0;
 
-    ghosts[0].x = 9;
-    ghosts[0].y = 9;
-    ghosts[1].x = 10;
-    ghosts[1].y = 9;
+    // Reseta fantasmas
+    ghosts[0] = { x: 9, y: 9, dx: 1, dy: 0, color: '#FF0000', speed: 3.5 };
+    ghosts[1] = { x: 10, y: 9, dx: -1, dy: 0, color: '#00FFFF', speed: 3 };
+    ghosts[2] = { x: 9, y: 10, dx: 0, dy: 1, color: '#FF69B4', speed: 2.8 };
+    ghosts[3] = { x: 10, y: 10, dx: 0, dy: -1, color: '#FFA500', speed: 3.2 };
 
     score = 0;
     gameOver = false;
     updateScore();
 }
 
-// Atualiza a pontuação
+// Atualiza pontuação
 function updateScore() {
     document.getElementById('score').textContent = score;
     document.getElementById('high-score').textContent = highScore;
@@ -98,15 +131,40 @@ function draw() {
     ctx.fillStyle = '#FFF';
     dots.forEach(dot => {
         ctx.beginPath();
-        ctx.arc(dot.x * tileSize + tileSize / 2, dot.y * tileSize + tileSize / 2, 3, 0, Math.PI * 2);
+        ctx.arc(dot.x * tileSize + tileSize/2, dot.y * tileSize + tileSize/2, 3, 0, Math.PI*2);
+        ctx.fill();
+    });
+
+    // Power pellets
+    ctx.fillStyle = '#FFD700';
+    powerPellets.forEach(pellet => {
+        ctx.beginPath();
+        ctx.arc(pellet.x * tileSize + tileSize/2, pellet.y * tileSize + tileSize/2, 6, 0, Math.PI*2);
         ctx.fill();
     });
 
     // Fantasmas
     ghosts.forEach(ghost => {
+        // Corpo
         ctx.fillStyle = ghost.color;
         ctx.beginPath();
-        ctx.arc(ghost.x * tileSize + tileSize / 2, ghost.y * tileSize + tileSize / 2, tileSize / 2, 0, Math.PI * 2);
+        ctx.arc(ghost.x * tileSize + tileSize/2, ghost.y * tileSize + tileSize/2, tileSize/2, Math.PI, Math.PI*2);
+        ctx.lineTo(ghost.x * tileSize + tileSize, ghost.y * tileSize + tileSize);
+        ctx.lineTo(ghost.x * tileSize, ghost.y * tileSize + tileSize);
+        ctx.fill();
+        
+        // Olhos
+        ctx.fillStyle = '#FFF';
+        ctx.beginPath();
+        ctx.arc(ghost.x * tileSize + tileSize/2 - 5, ghost.y * tileSize + tileSize/2 - 3, 4, 0, Math.PI*2);
+        ctx.arc(ghost.x * tileSize + tileSize/2 + 5, ghost.y * tileSize + tileSize/2 - 3, 4, 0, Math.PI*2);
+        ctx.fill();
+        
+        // Pupilas
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(ghost.x * tileSize + tileSize/2 - 5 + (ghost.dx * 2), ghost.y * tileSize + tileSize/2 - 3 + (ghost.dy * 2), 2, 0, Math.PI*2);
+        ctx.arc(ghost.x * tileSize + tileSize/2 + 5 + (ghost.dx * 2), ghost.y * tileSize + tileSize/2 - 3 + (ghost.dy * 2), 2, 0, Math.PI*2);
         ctx.fill();
     });
 
@@ -128,42 +186,67 @@ function draw() {
         startAngle = Math.PI + 0.2 * Math.PI * pacman.mouthAngle;
         endAngle = Math.PI - 0.2 * Math.PI * pacman.mouthAngle;
     } else if (pacman.dy === 1) {
-        startAngle = Math.PI / 2 + 0.2 * Math.PI * pacman.mouthAngle;
-        endAngle = Math.PI / 2 - 0.2 * Math.PI * pacman.mouthAngle;
+        startAngle = Math.PI/2 + 0.2 * Math.PI * pacman.mouthAngle;
+        endAngle = Math.PI/2 - 0.2 * Math.PI * pacman.mouthAngle;
     } else if (pacman.dy === -1) {
-        startAngle = 3 * Math.PI / 2 + 0.2 * Math.PI * pacman.mouthAngle;
-        endAngle = 3 * Math.PI / 2 - 0.2 * Math.PI * pacman.mouthAngle;
+        startAngle = 3*Math.PI/2 + 0.2 * Math.PI * pacman.mouthAngle;
+        endAngle = 3*Math.PI/2 - 0.2 * Math.PI * pacman.mouthAngle;
     } else {
         startAngle = 0.2 * Math.PI * pacman.mouthAngle;
         endAngle = 2 * Math.PI - 0.2 * Math.PI * pacman.mouthAngle;
     }
 
     ctx.arc(
-        pacman.x * tileSize + tileSize / 2,
-        pacman.y * tileSize + tileSize / 2,
+        pacman.x * tileSize + tileSize/2,
+        pacman.y * tileSize + tileSize/2,
         pacman.radius,
         startAngle,
         endAngle
     );
-    ctx.lineTo(pacman.x * tileSize + tileSize / 2, pacman.y * tileSize + tileSize / 2);
+    ctx.lineTo(pacman.x * tileSize + tileSize/2, pacman.y * tileSize + tileSize/2);
     ctx.fill();
 
     // Game Over
     if (gameOver) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#FF0000';
-        ctx.font = '24px Arial';
+        ctx.font = '24px "Press Start 2P"';
         ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2 - 20);
+        ctx.fillStyle = '#FFF';
+        ctx.font = '16px "Press Start 2P"';
+        ctx.fillText(`SCORE: ${score}`, canvas.width/2, canvas.height/2 + 20);
     }
 }
 
-// Atualiza o estado do jogo
-function update() {
-    if (gameOver) return;
+// Atualiza o jogo
+function update(currentTime) {
+    if (!lastTime) lastTime = currentTime;
+    deltaTime = currentTime - lastTime;
 
-    // Move Pac-Man
+    if (deltaTime > frameInterval) {
+        if (!gameOver) {
+            movePacman();
+            moveGhosts();
+            checkCollisions();
+        }
+        lastTime = currentTime - (deltaTime % frameInterval);
+    }
+}
+
+// Movimenta o Pac-Man
+function movePacman() {
+    // Verifica próxima direção
+    const nextX = Math.round(pacman.x + pacman.nextDX);
+    const nextY = Math.round(pacman.y + pacman.nextDY);
+    
+    if (!isWall(nextX, nextY)) {
+        pacman.dx = pacman.nextDX;
+        pacman.dy = pacman.nextDY;
+    }
+
+    // Movimento
     const newX = pacman.x + pacman.dx * pacman.speed / 10;
     const newY = pacman.y + pacman.dy * pacman.speed / 10;
 
@@ -177,38 +260,66 @@ function update() {
     if (pacman.x >= tileCount) pacman.x = 0;
     if (pacman.y < 0) pacman.y = tileCount - 1;
     if (pacman.y >= tileCount) pacman.y = 0;
+}
 
-    // Move fantasmas
+// Movimenta fantasmas
+function moveGhosts() {
     ghosts.forEach(ghost => {
-        const newGhostX = ghost.x + ghost.dx * ghost.speed / 10;
-        const newGhostY = ghost.y + ghost.dy * ghost.speed / 10;
+        // IA melhorada
+        const directions = [
+            { dx: 1, dy: 0 },
+            { dx: -1, dy: 0 },
+            { dx: 0, dy: 1 },
+            { dx: 0, dy: -1 }
+        ];
 
-        if (!isWall(Math.round(newGhostX), Math.round(newGhostY))) {
-            ghost.x = newGhostX;
-            ghost.y = newGhostY;
-        } else {
-            // Muda direção aleatoriamente
-            const directions = [
-                { dx: 1, dy: 0 },
-                { dx: -1, dy: 0 },
-                { dx: 0, dy: 1 },
-                { dx: 0, dy: -1 }
-            ];
-            const randomDir = directions[Math.floor(Math.random() * directions.length)];
-            ghost.dx = randomDir.dx;
-            ghost.dy = randomDir.dy;
+        // Tenta perseguir o Pac-Man
+        if (Math.random() < 0.3) {
+            if (Math.abs(ghost.x - pacman.x) > Math.abs(ghost.y - pacman.y)) {
+                ghost.dx = ghost.x < pacman.x ? 1 : -1;
+                ghost.dy = 0;
+            } else {
+                ghost.dy = ghost.y < pacman.y ? 1 : -1;
+                ghost.dx = 0;
+            }
         }
 
-        // Túnel para fantasmas
+        // Verifica se pode mover na direção atual
+        const newX = ghost.x + ghost.dx * ghost.speed / 10;
+        const newY = ghost.y + ghost.dy * ghost.speed / 10;
+
+        if (isWall(Math.round(newX), Math.round(newY)) || Math.random() < 0.1) {
+            // Escolhe nova direção aleatória
+            const validDirs = directions.filter(dir => 
+                !isWall(Math.round(ghost.x + dir.dx), Math.round(ghost.y + dir.dy))
+            );
+            
+            if (validDirs.length > 0) {
+                const newDir = validDirs[Math.floor(Math.random() * validDirs.length)];
+                ghost.dx = newDir.dx;
+                ghost.dy = newDir.dy;
+            }
+        }
+
+        ghost.x += ghost.dx * ghost.speed / 10;
+        ghost.y += ghost.dy * ghost.speed / 10;
+
+        // Túnel
         if (ghost.x < 0) ghost.x = tileCount - 1;
         if (ghost.x >= tileCount) ghost.x = 0;
         if (ghost.y < 0) ghost.y = tileCount - 1;
         if (ghost.y >= tileCount) ghost.y = 0;
     });
+}
 
-    // Verifica colisão com pontos
+// Verifica colisões
+function checkCollisions() {
+    const pacX = Math.round(pacman.x);
+    const pacY = Math.round(pacman.y);
+
+    // Pontos
     dots = dots.filter(dot => {
-        if (Math.round(pacman.x) === dot.x && Math.round(pacman.y) === dot.y) {
+        if (pacX === dot.x && pacY === dot.y) {
             score += 10;
             if (score > highScore) {
                 highScore = score;
@@ -220,26 +331,26 @@ function update() {
         return true;
     });
 
-    // Verifica colisão com fantasmas
+    // Power pellets
+    powerPellets.forEach((pellet, index) => {
+        if (pacX === pellet.x && pacY === pellet.y) {
+            score += 50;
+            powerPellets.splice(index, 1);
+            updateScore();
+        }
+    });
+
+    // Fantasmas
     ghosts.forEach(ghost => {
-        if (Math.round(pacman.x) === Math.round(ghost.x) && 
-            Math.round(pacman.y) === Math.round(ghost.y)) {
+        if (pacX === Math.round(ghost.x) && pacY === Math.round(ghost.y)) {
             gameOver = true;
             document.getElementById('startBtn').textContent = 'RESTART';
         }
     });
 
-    // Vitória (coletou todos os pontos)
-    if (dots.length === 0) {
-        initGame(); // Reinicia o jogo
-        ghosts.push({ // Adiciona um novo fantasma
-            x: Math.floor(Math.random() * tileCount),
-            y: Math.floor(Math.random() * tileCount),
-            dx: [-1, 1][Math.floor(Math.random() * 2)],
-            dy: 0,
-            color: `hsl(${Math.random() * 360}, 100%, 50%)`,
-            speed: Math.random() * 2 + 1
-        });
+    // Vitória
+    if (dots.length === 0 && powerPellets.length === 0) {
+        initGame();
     }
 }
 
@@ -248,57 +359,47 @@ function isWall(x, y) {
     return walls.some(wall => wall.x === x && wall.y === y);
 }
 
-// Controles (teclado)
+// Controles
 document.addEventListener('keydown', e => {
     if (gameOver) return;
 
     switch (e.key) {
         case 'ArrowUp':
-            if (!isWall(Math.round(pacman.x), Math.round(pacman.y) - 1)) {
-                pacman.dx = 0;
-                pacman.dy = -1;
-            }
+            pacman.nextDX = 0;
+            pacman.nextDY = -1;
             break;
         case 'ArrowDown':
-            if (!isWall(Math.round(pacman.x), Math.round(pacman.y) + 1)) {
-                pacman.dx = 0;
-                pacman.dy = 1;
-            }
+            pacman.nextDX = 0;
+            pacman.nextDY = 1;
             break;
         case 'ArrowLeft':
-            if (!isWall(Math.round(pacman.x) - 1, Math.round(pacman.y))) {
-                pacman.dx = -1;
-                pacman.dy = 0;
-            }
+            pacman.nextDX = -1;
+            pacman.nextDY = 0;
             break;
         case 'ArrowRight':
-            if (!isWall(Math.round(pacman.x) + 1, Math.round(pacman.y))) {
-                pacman.dx = 1;
-                pacman.dy = 0;
-            }
+            pacman.nextDX = 1;
+            pacman.nextDY = 0;
             break;
     }
 });
 
-// Botão Start/Restart
+// Botão Start
 document.getElementById('startBtn').addEventListener('click', () => {
-    if (gameRunning) {
-        cancelAnimationFrame(animationId);
-    }
+    if (gameRunning) cancelAnimationFrame(animationId);
     initGame();
     gameRunning = true;
     gameOver = false;
-    document.getElementById('startBtn').textContent = 'RESTART';
-    gameLoop();
+    lastTime = 0;
+    animationId = requestAnimationFrame(gameLoop);
 });
 
 // Loop do jogo
-function gameLoop() {
-    update();
+function gameLoop(currentTime) {
+    update(currentTime);
     draw();
     animationId = requestAnimationFrame(gameLoop);
 }
 
-// Inicia o jogo automaticamente
+// Inicia automaticamente
 initGame();
 document.getElementById('startBtn').click();
