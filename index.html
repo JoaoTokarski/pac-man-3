@@ -1,1 +1,32 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Pack-Man</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>PACK-MAN</h1>
+            <div class="score-display">
+                <span>SCORE: <span id="score">0</span></span>
+                <span>HIGH: <span id="high-score">0</span></span>
+            </div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div class="game-controls">
+            <button id="startBtn">START</button>
+            <div class="mobile-controls">
+                <button class="arrow-btn" id="upBtn">↑</button>
+                <button class="arrow-btn" id="leftBtn">←</button>
+                <button class="arrow-btn" id="downBtn">↓</button>
+                <button class="arrow-btn" id="rightBtn">→</button>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
