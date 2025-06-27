@@ -1,164 +1,119 @@
-const width = 28;
-const board = document.getElementById("board");
-const scoreDisplay = document.getElementById("score");
-let score = 0;
+const board = document.getElementById('gameBoard');
+const width = 30;
+const height = 30;
+const totalCells = width * height;
+const cells = [];
 
-const layout = [
-  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1,
-  1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,0,1,
-  1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,1,
-  1,1,1,1,1,1,0,1,1,1,1,2,2,2,2,2,2,1,1,1,1,0,1,1,1,1,1,1,
-  1,1,1,1,1,1,0,1,1,1,2,2,2,2,2,2,2,2,1,1,1,0,1,1,1,1,1,1,
-  1,1,1,1,1,1,0,1,1,2,2,2,2,2,2,2,2,2,2,1,1,0,1,1,1,1,1,1,
-  1,1,1,1,1,1,0,1,1,2,2,2,2,2,2,2,2,2,2,1,1,0,1,1,1,1,1,1,
-  1,1,1,1,1,1,0,1,1,1,1,2,2,2,2,2,2,1,1,1,1,0,1,1,1,1,1,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,0,1,
-  1,0,0,0,0,1,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,0,0,0,0,1,
-  1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,
-  1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,1,1,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,1,1,0,1,
-  1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,1,
-  1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,0,1,
-  1,0,0,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,0,0,0,0,1,
-  1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,
-  1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-];
-const squares = [];
+const layout = Array.from({ length: totalCells }, (_, i) => {
+  const row = Math.floor(i / width);
+  const col = i % width;
+  if (
+    row === 0 || row === height - 1 ||
+    col === 0 || col === width - 1 ||
+    Math.random() < 0.08
+  ) return 1; // parede
+  return 0; // espaço
+});
 
 function createBoard() {
-  for (let i = 0; i < layout.length; i++) {
-    const square = document.createElement("div");
-    square.classList.add("square");
-    board.appendChild(square);
-    squares.push(square);
-
-    if (layout[i] === 0) square.classList.add("pac-dot");
-    else if (layout[i] === 1) square.classList.add("wall");
+  for (let i = 0; i < totalCells; i++) {
+    const cell = document.createElement('div');
+    cell.classList.add('cell');
+    if (layout[i] === 1) {
+      cell.classList.add('wall');
+    } else {
+      cell.classList.add('dot');
+    }
+    board.appendChild(cell);
+    cells.push(cell);
   }
 }
+createBoard();
 
-let pacmanCurrentIndex = 490;
-squares[pacmanCurrentIndex].classList.add("pacman");
+// Pac-Man
+let pacmanIndex = width + 1;
+cells[pacmanIndex].classList.remove('dot');
+cells[pacmanIndex].classList.add('pacman');
 
-function movePacman(e) {
-  squares[pacmanCurrentIndex].classList.remove("pacman");
-
+// Movimento do Pac-Man
+document.addEventListener('keydown', e => {
+  let nextIndex = pacmanIndex;
   switch (e.key) {
-    case "ArrowLeft":
-      if (
-        pacmanCurrentIndex % width !== 0 &&
-        !squares[pacmanCurrentIndex - 1].classList.contains("wall")
-      )
-        pacmanCurrentIndex -= 1;
-      break;
-    case "ArrowUp":
-      if (
-        pacmanCurrentIndex - width >= 0 &&
-        !squares[pacmanCurrentIndex - width].classList.contains("wall")
-      )
-        pacmanCurrentIndex -= width;
-      break;
-    case "ArrowRight":
-      if (
-        pacmanCurrentIndex % width < width - 1 &&
-        !squares[pacmanCurrentIndex + 1].classList.contains("wall")
-      )
-        pacmanCurrentIndex += 1;
-      break;
-    case "ArrowDown":
-      if (
-        pacmanCurrentIndex + width < width * width &&
-        !squares[pacmanCurrentIndex + width].classList.contains("wall")
-      )
-        pacmanCurrentIndex += width;
-      break;
+    case 'ArrowUp': nextIndex -= width; break;
+    case 'ArrowDown': nextIndex += width; break;
+    case 'ArrowLeft': nextIndex -= 1; break;
+    case 'ArrowRight': nextIndex += 1; break;
+    default: return;
   }
 
-  eatDot();
-  squares[pacmanCurrentIndex].classList.add("pacman");
+  if (
+    nextIndex >= 0 &&
+    nextIndex < totalCells &&
+    !cells[nextIndex].classList.contains('wall')
+  ) {
+    cells[pacmanIndex].classList.remove('pacman');
+    pacmanIndex = nextIndex;
+
+    if (cells[pacmanIndex].classList.contains('dot')) {
+      cells[pacmanIndex].classList.remove('dot');
+    }
+
+    cells[pacmanIndex].classList.add('pacman');
+  }
+});
+
+// Fantasmas
+const ghostCount = 5;
+const ghosts = [];
+
+for (let i = 0; i < ghostCount; i++) {
+  let ghostIndex;
+  do {
+    ghostIndex = Math.floor(Math.random() * totalCells);
+  } while (
+    layout[ghostIndex] === 1 ||
+    ghostIndex === pacmanIndex ||
+    ghosts.includes(ghostIndex)
+  );
+  ghosts.push(ghostIndex);
+  cells[ghostIndex].classList.add('ghost');
 }
 
-document.addEventListener("keydown", movePacman);
+// Movimento dos Fantasmas
+function moveGhosts() {
+  for (let i = 0; i < ghosts.length; i++) {
+    let currentIndex = ghosts[i];
+    let bestMove = currentIndex;
+    let minDistance = Infinity;
+    const directions = [-1, 1, -width, width];
 
-function eatDot() {
-  if (squares[pacmanCurrentIndex].classList.contains("pac-dot")) {
-    score++;
-    scoreDisplay.textContent = `Pontos: ${score}`;
-    squares[pacmanCurrentIndex].classList.remove("pac-dot");
-  }
-}
-
-class Ghost {
-  constructor(className, startIndex, speed) {
-    this.className = className;
-    this.startIndex = startIndex;
-    this.speed = speed;
-    this.currentIndex = startIndex;
-    this.timerId = null;
-  }
-
-  move() {
-    const directions = [-1, +1, -width, +width];
-    this.timerId = setInterval(() => {
-      const pacPos = pacmanCurrentIndex;
-
-      let bestMove = this.currentIndex;
-      let minDistance = Infinity;
-
-      for (let dir of directions) {
-        const nextIndex = this.currentIndex + dir;
-        if (
-          !squares[nextIndex].classList.contains("wall") &&
-          nextIndex >= 0 &&
-          nextIndex < squares.length
-        ) {
-          const dx = (nextIndex % width) - (pacPos % width);
-          const dy = Math.floor(nextIndex / width) - Math.floor(pacPos / width);
-          const distance = dx * dx + dy * dy;
-          if (distance < minDistance) {
-            minDistance = distance;
-            bestMove = nextIndex;
-          }
+    for (let dir of directions) {
+      const next = currentIndex + dir;
+      if (
+        next >= 0 &&
+        next < totalCells &&
+        !cells[next].classList.contains('wall') &&
+        !cells[next].classList.contains('ghost')
+      ) {
+        const dx = next % width - pacmanIndex % width;
+        const dy = Math.floor(next / width) - Math.floor(pacmanIndex / width);
+        const distance = Math.abs(dx) + Math.abs(dy);
+        if (distance < minDistance) {
+          bestMove = next;
+          minDistance = distance;
         }
       }
+    }
 
-      squares[this.currentIndex].classList.remove(this.className, "ghost");
-      this.currentIndex = bestMove;
-      squares[this.currentIndex].classList.add(this.className, "ghost");
+    cells[currentIndex].classList.remove('ghost');
+    ghosts[i] = bestMove;
+    cells[bestMove].classList.add('ghost');
 
-      if (this.currentIndex === pacmanCurrentIndex) {
-        alert("Game Over");
-        clearInterval(this.timerId);
-        document.removeEventListener("keydown", movePacman);
-      }
-    }, this.speed);
+    if (bestMove === pacmanIndex) {
+      alert("💀 Game Over! Um fantasma pegou você!");
+      location.reload();
+    }
   }
 }
 
-const ghosts = [
-  new Ghost("ghost1", 348, 300),
-  new Ghost("ghost2", 376, 350),
-  new Ghost("ghost3", 351, 400),
-  new Ghost("ghost4", 379, 450),
-  new Ghost("ghost5", 380, 500),
-];
-
-function startGame() {
-  createBoard();
-  ghosts.forEach((ghost) => {
-    squares[ghost.startIndex].classList.add(ghost.className, "ghost");
-    ghost.move();
-  });
-}
-
-startGame();
+setInterval(moveGhosts, 500);
