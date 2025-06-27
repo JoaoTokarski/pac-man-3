@@ -2,9 +2,9 @@
 const config = {
     tileSize: 20,
     tileCount: 20,
-    pacmanSpeed: 6,
-    ghostSpeed: 3.5,
-    fps: 120
+    pacmanSpeed: 5,
+    ghostSpeed: 2.5,
+    fps: 60
 };
 
 // Elementos do DOM
@@ -25,12 +25,6 @@ const state = {
     lastTime: 0,
     frameId: null
 };
-
-// Inicializa canvas
-function initCanvas() {
-    elements.canvas.width = config.tileSize * config.tileCount;
-    elements.canvas.height = config.tileSize * config.tileCount;
-}
 
 // Entidades do jogo
 const entities = {
@@ -70,9 +64,14 @@ const maze = [
     "####################"
 ];
 
+// Inicializa o canvas
+function initCanvas() {
+    elements.canvas.width = config.tileSize * config.tileCount;
+    elements.canvas.height = config.tileSize * config.tileCount;
+}
+
 // Inicializa o jogo
 function initGame() {
-    // Configurações iniciais
     initCanvas();
     generateMaze();
     resetEntities();
@@ -99,7 +98,7 @@ function generateMaze() {
     }
 }
 
-// Reseta entidades
+// Reseta as entidades
 function resetEntities() {
     entities.pacman = {
         x: 10,
@@ -150,32 +149,19 @@ function updateGame() {
 
 // Renderiza o jogo
 function renderGame() {
-    // Limpa o canvas
     elements.ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
-    
-    // Desenha paredes
     drawWalls();
-    
-    // Desenha pontos
     drawDots();
-    
-    // Desenha power pellets
     drawPowerPellets();
-    
-    // Desenha fantasmas
     drawGhosts();
-    
-    // Desenha Pac-Man
     drawPacman();
     
-    // Desenha game over se necessário
     if (state.gameOver) {
         drawGameOver();
     }
 }
 
-// Funções de desenho (omitas por brevidade, mas otimizadas)
-// ... [implementações similares às versões anteriores, mas mais otimizadas]
+// [Restante das funções de desenho e movimentação...]
 
 // Controles
 function setupControls() {
