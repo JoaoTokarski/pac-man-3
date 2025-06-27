@@ -1,19 +1,62 @@
 body {
-  margin: 0;
-  padding: 0;
-  background-color: #000;
+  background: black;
   color: yellow;
-  font-family: 'Arial', sans-serif;
-  text-align: center;
+  font-family: "Press Start 2P", sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
 }
 
-#game-container {
-  display: flex;
-  justify-content: center;
+h1 {
+  margin-top: 20px;
+  font-size: 2rem;
+}
+
+#game {
   margin-top: 20px;
 }
 
-canvas {
-  border: 4px solid yellow;
+#board {
+  display: grid;
+  grid-template-columns: repeat(28, 20px);
+  gap: 1px;
+}
+
+.square {
+  width: 20px;
+  height: 20px;
   background-color: black;
+}
+
+.wall {
+  background-color: blue;
+}
+
+.pac-dot {
+  background-color: white;
+  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+  margin: 7px auto;
+}
+
+.pacman {
+  background-color: yellow;
+  border-radius: 50%;
+}
+
+.ghost {
+  background-color: red;
+  border-radius: 50%;
+}
+
+.ghost1 { background-color: red; }
+.ghost2 { background-color: pink; }
+.ghost3 { background-color: cyan; }
+.ghost4 { background-color: orange; }
+.ghost5 { background-color: purple; }
+
+#score {
+  margin-top: 20px;
 }
