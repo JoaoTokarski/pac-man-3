@@ -2,8 +2,8 @@
 const config = {
     tileSize: 20,
     tileCount: 20,
-    pacmanSpeed: 3,  // Velocidade reduzida
-    ghostSpeed: 1.8, // Velocidade reduzida
+    pacmanSpeed: 4,
+    ghostSpeed: 2,
     fps: 60
 };
 
@@ -17,7 +17,7 @@ const elements = {
 };
 
 // Estado do jogo
-const state = {
+const gameState = {
     score: 0,
     highScore: localStorage.getItem('pacmanHighScore') || 0,
     running: false,
@@ -41,7 +41,7 @@ const entities = {
     },
     ghosts: [
         { x: 9, y: 9, dx: 1, dy: 0, color: 'var(--ghost-red)', speed: config.ghostSpeed },
-        { x: 10, y: 9, dx: -1, dy: 0, color: 'var(--ghost-cyan)', speed: config.ghostSpeed * 0.8 }
+        { x: 10, y: 9, dx: -1, dy: 0, color: 'var(--ghost-cyan)', speed: config.ghostSpeed * 0.9 }
     ],
     dots: [],
     walls: [],
@@ -64,19 +64,21 @@ const maze = [
     "####################"
 ];
 
-// Inicializa o canvas
-function initCanvas() {
-    elements.canvas.width = config.tileSize * config.tileCount;
-    elements.canvas.height = config.tileSize * config.tileCount;
-}
-
 // Inicializa o jogo
 function initGame() {
-    initCanvas();
+    // Configura canvas
+    elements.canvas.width = config.tileSize * config.tileCount;
+    elements.canvas.height = config.tileSize * config.tileCount;
+    
+    // Gera labirinto
     generateMaze();
+    
+    // Reseta entidades
     resetEntities();
-    state.score = 0;
-    state.gameOver = false;
+    
+    // Reseta estado
+    gameState.score = 0;
+    gameState.gameOver = false;
     updateScoreDisplay();
 }
 
@@ -98,7 +100,7 @@ function generateMaze() {
     }
 }
 
-// Reseta as entidades
+// Reseta entidades
 function resetEntities() {
     entities.pacman = {
         x: 10,
@@ -114,68 +116,80 @@ function resetEntities() {
     
     entities.ghosts = [
         { x: 9, y: 9, dx: 1, dy: 0, color: 'var(--ghost-red)', speed: config.ghostSpeed },
-        { x: 10, y: 9, dx: -1, dy: 0, color: 'var(--ghost-cyan)', speed: config.ghostSpeed * 0.8 }
+        { x: 10, y: 9, dx: -1, dy: 0, color: 'var(--ghost-cyan)', speed: config.ghostSpeed * 0.9 }
     ];
 }
 
 // Atualiza a pontuação
 function updateScoreDisplay() {
-    elements.scoreDisplay.textContent = state.score;
-    elements.highScoreDisplay.textContent = state.highScore;
+    elements.scoreDisplay.textContent = gameState.score;
+    elements.highScoreDisplay.textContent = gameState.highScore;
 }
 
 // Loop principal do jogo
 function gameLoop(currentTime) {
-    if (!state.lastTime) state.lastTime = currentTime;
-    const deltaTime = currentTime - state.lastTime;
+    if (!gameState.lastTime) gameState.lastTime = currentTime;
+    const deltaTime = currentTime - gameState.lastTime;
     
     if (deltaTime > 1000 / config.fps) {
-        if (!state.gameOver) {
-            updateGame();
+        if (!gameState.gameOver) {
+            update();
         }
-        renderGame();
-        state.lastTime = currentTime - (deltaTime % (1000 / config.fps));
+        render();
+        gameState.lastTime = currentTime - (deltaTime % (1000 / config.fps));
     }
     
-    state.frameId = requestAnimationFrame(gameLoop);
+    gameState.frameId = requestAnimationFrame(gameLoop);
 }
 
 // Atualiza o estado do jogo
-function updateGame() {
+function update() {
     movePacman();
     moveGhosts();
     checkCollisions();
 }
 
 // Renderiza o jogo
-function renderGame() {
+function render() {
+    // Limpa o canvas
     elements.ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
+    
+    // Desenha paredes
     drawWalls();
+    
+    // Desenha pontos
     drawDots();
+    
+    // Desenha power pellets
     drawPowerPellets();
+    
+    // Desenha fantasmas
     drawGhosts();
+    
+    // Desenha Pac-Man
     drawPacman();
     
-    if (state.gameOver) {
+    // Desenha game over se necessário
+    if (gameState.gameOver) {
         drawGameOver();
     }
 }
 
 // Funções de desenho
 function drawWalls() {
-    elements.ctx.fillStyle = 'var(--blue)';
+    elements.ctx.fillStyle = 'var(--wall)';
     entities.walls.forEach(wall => {
         elements.ctx.fillRect(
-            wall.x * config.tileSize, 
-            wall.y * config.tileSize, 
-            config.tileSize, 
+            wall.x * config.tileSize,
+            wall.y * config.tileSize,
+            config.tileSize,
             config.tileSize
         );
     });
 }
 
 function drawDots() {
-    elements.ctx.fillStyle = 'var(--white)';
+    elements.ctx.fillStyle = 'var(--dot)';
     entities.dots.forEach(dot => {
         elements.ctx.beginPath();
         elements.ctx.arc(
@@ -190,7 +204,7 @@ function drawDots() {
 }
 
 function drawPowerPellets() {
-    elements.ctx.fillStyle = 'var(--yellow)';
+    elements.ctx.fillStyle = 'var(--primary)';
     entities.powerPellets.forEach(pellet => {
         elements.ctx.beginPath();
         elements.ctx.arc(
@@ -206,10 +220,11 @@ function drawPowerPellets() {
 
 function drawGhosts() {
     entities.ghosts.forEach(ghost => {
+        // Corpo
         elements.ctx.fillStyle = ghost.color;
-        
-        // Corpo do fantasma
         elements.ctx.beginPath();
+        
+        // Parte superior arredondada
         elements.ctx.arc(
             ghost.x * config.tileSize + config.tileSize / 2,
             ghost.y * config.tileSize + config.tileSize / 2 - 5,
@@ -218,17 +233,13 @@ function drawGhosts() {
             0,
             false
         );
-        elements.ctx.lineTo(
-            ghost.x * config.tileSize + config.tileSize,
-            ghost.y * config.tileSize + config.tileSize / 2 + 5
-        );
         
-        // Ondas na base
-        const waveSize = 5;
+        // Parte inferior com ondulações
+        const waveHeight = 5;
         for (let i = 0; i < 3; i++) {
             elements.ctx.lineTo(
                 ghost.x * config.tileSize + config.tileSize - (i * config.tileSize / 3),
-                ghost.y * config.tileSize + config.tileSize / 2 + 5 + (i % 2 === 0 ? waveSize : -waveSize)
+                ghost.y * config.tileSize + config.tileSize / 2 + 5 + (i % 2 === 0 ? waveHeight : -waveHeight)
             );
         }
         
@@ -240,7 +251,7 @@ function drawGhosts() {
         elements.ctx.fill();
         
         // Olhos
-        elements.ctx.fillStyle = 'var(--white)';
+        elements.ctx.fillStyle = '#FFF';
         elements.ctx.beginPath();
         elements.ctx.arc(
             ghost.x * config.tileSize + config.tileSize / 2 - 5,
@@ -259,7 +270,7 @@ function drawGhosts() {
         elements.ctx.fill();
         
         // Pupilas
-        elements.ctx.fillStyle = 'var(--dark)';
+        elements.ctx.fillStyle = '#000';
         elements.ctx.beginPath();
         elements.ctx.arc(
             ghost.x * config.tileSize + config.tileSize / 2 - 5 + (ghost.dx * 2),
@@ -280,7 +291,7 @@ function drawGhosts() {
 }
 
 function drawPacman() {
-    elements.ctx.fillStyle = 'var(--yellow)';
+    elements.ctx.fillStyle = 'var(--primary)';
     elements.ctx.beginPath();
     
     // Animação da boca
@@ -324,16 +335,16 @@ function drawPacman() {
 function drawGameOver() {
     elements.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
     elements.ctx.fillRect(0, 0, elements.canvas.width, elements.canvas.height);
-    elements.ctx.fillStyle = 'var(--red)';
+    elements.ctx.fillStyle = 'var(--ghost-red)';
     elements.ctx.font = '24px "Press Start 2P"';
     elements.ctx.textAlign = 'center';
     elements.ctx.textBaseline = 'middle';
     elements.ctx.fillText('GAME OVER', elements.canvas.width / 2, elements.canvas.height / 2 - 20);
     
-    elements.ctx.fillStyle = 'var(--white)';
+    elements.ctx.fillStyle = '#FFF';
     elements.ctx.font = '16px "Press Start 2P"';
-    elements.ctx.fillText(`SCORE: ${state.score}`, elements.canvas.width / 2, elements.canvas.height / 2 + 20);
-    elements.ctx.fillText(`HIGH SCORE: ${state.highScore}`, elements.canvas.width / 2, elements.canvas.height / 2 + 50);
+    elements.ctx.fillText(`SCORE: ${gameState.score}`, elements.canvas.width / 2, elements.canvas.height / 2 + 20);
+    elements.ctx.fillText(`HIGH SCORE: ${gameState.highScore}`, elements.canvas.width / 2, elements.canvas.height / 2 + 50);
 }
 
 // Movimentação do Pac-Man
@@ -414,10 +425,10 @@ function checkCollisions() {
     // Pontos
     entities.dots = entities.dots.filter(dot => {
         if (pacX === dot.x && pacY === dot.y) {
-            state.score += 10;
-            if (state.score > state.highScore) {
-                state.highScore = state.score;
-                localStorage.setItem('pacmanHighScore', state.highScore);
+            gameState.score += 10;
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem('pacmanHighScore', gameState.highScore);
             }
             updateScoreDisplay();
             return false;
@@ -428,7 +439,7 @@ function checkCollisions() {
     // Power pellets
     entities.powerPellets.forEach((pellet, index) => {
         if (pacX === pellet.x && pacY === pellet.y) {
-            state.score += 50;
+            gameState.score += 50;
             entities.powerPellets.splice(index, 1);
             updateScoreDisplay();
         }
@@ -437,7 +448,7 @@ function checkCollisions() {
     // Fantasmas
     entities.ghosts.forEach(ghost => {
         if (pacX === Math.round(ghost.x) && pacY === Math.round(ghost.y)) {
-            state.gameOver = true;
+            gameState.gameOver = true;
             elements.startBtn.textContent = 'RESTART';
         }
     });
@@ -456,7 +467,7 @@ function isWall(x, y) {
 // Configura controles
 function setupControls() {
     document.addEventListener('keydown', (e) => {
-        if (state.gameOver) return;
+        if (gameState.gameOver) return;
         
         switch (e.key) {
             case 'ArrowUp': 
@@ -485,12 +496,12 @@ function init() {
     setupControls();
     
     elements.startBtn.addEventListener('click', () => {
-        if (state.running) {
-            cancelAnimationFrame(state.frameId);
+        if (gameState.running) {
+            cancelAnimationFrame(gameState.frameId);
         }
         initGame();
-        state.running = true;
-        state.gameOver = false;
+        gameState.running = true;
+        gameState.gameOver = false;
         gameLoop(0);
     });
 }
